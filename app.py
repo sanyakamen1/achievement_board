@@ -46,6 +46,13 @@ def on_checkbox_change(name):
         st.toast(f"🏆 Achievement unlocked: {name}")
         st.session_state[f"{name}_toast_shown"] = True
 
+# --- Колбэки для pop-up ---
+def show_popup(name):
+    st.session_state[f"{name}_show_popup"] = True
+
+def close_popup(name):
+    st.session_state[f"{name}_show_popup"] = False
+
 # --- Сетка 3xN с отступами между рядами ---
 cols_per_row = 3
 col_index = 0
@@ -85,8 +92,7 @@ for i, name in enumerate(achievements.keys()):
         with cols_inner[0]:
             st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
         with cols_inner[1]:
-            if st.button("Details", key=f"details_{name}"):
-                st.session_state[f"{name}_show_popup"] = True
+            st.button("Details", key=f"details_{name}", on_click=show_popup, args=(name,))
 
         # --- Псевдо-pop-up под карточкой ---
         if st.session_state[f"{name}_show_popup"]:
@@ -106,8 +112,7 @@ for i, name in enumerate(achievements.keys()):
                 """,
                 unsafe_allow_html=True
             )
-            if st.button("Close", key=f"close_{name}"):
-                st.session_state[f"{name}_show_popup"] = False
+            st.button("Close", key=f"close_{name}", on_click=close_popup, args=(name,))
 
     col_index += 1
     if col_index >= cols_per_row:
