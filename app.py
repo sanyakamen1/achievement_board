@@ -19,11 +19,7 @@ else:
     achievements = {
         "Run 10 km": {"done": False, "description": "Пробежал 10 километров за один раз."},
         "Read 5 books": {"done": False, "description": "Прочитал 5 книг."},
-        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд."},
-        "Write 1000 words": {"done": False, "description": "Написал 1000 слов."},
-        "Learn Python basics": {"done": False, "description": "Выучил основы Python."},
-        "Cook a new recipe": {"done": False, "description": "Приготовил новое блюдо."},
-        "Draw a sketch": {"done": False, "description": "Нарисовал набросок."}
+        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд."}
     }
 
 # --- Инициализация session_state ---
@@ -53,11 +49,27 @@ def show_popup(name):
 def close_popup(name):
     st.session_state[f"{name}_show_popup"] = False
 
+# --- Создание новой ачивки ---
+with st.sidebar:  # можно вместо sidebar разместить в правом верхнем углу через st.columns
+    st.header("➕ Add New Achievement")
+    new_name = st.text_input("Title")
+    new_desc = st.text_area("Description")
+    if st.button("Create"):
+        if new_name.strip() != "" and new_name not in achievements:
+            achievements[new_name] = {"done": False, "description": new_desc}
+            st.session_state[new_name] = False
+            st.session_state[f"{new_name}_toast_shown"] = False
+            st.session_state[f"{new_name}_show_popup"] = False
+            # сохраняем сразу в JSON
+            with open(DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump(achievements, f, ensure_ascii=False, indent=2)
+            st.success(f"Achievement '{new_name}' added!")
+
 # --- Сетка 3xN с отступами между рядами ---
 cols_per_row = 3
 col_index = 0
 cols = st.columns(cols_per_row)
-row_margin = 40  # px отступ между рядами
+row_margin = 40
 
 for i, name in enumerate(achievements.keys()):
     col = cols[col_index]
@@ -65,7 +77,7 @@ for i, name in enumerate(achievements.keys()):
         img_path = GOLD_IMG if st.session_state[name] else GRAY_IMG
         img_base64 = img_to_base64(img_path)
 
-        # --- Плашка с картинкой и названием ---
+        # Плашка
         st.markdown(
             f"""
             <div style="
@@ -87,14 +99,14 @@ for i, name in enumerate(achievements.keys()):
             unsafe_allow_html=True
         )
 
-        # --- Горизонтальная строка под плашкой: чекбокс и кнопка Details ---
+        # Чекбокс + Details
         cols_inner = st.columns([1,1])
         with cols_inner[0]:
             st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
         with cols_inner[1]:
             st.button("Details", key=f"details_{name}", on_click=show_popup, args=(name,))
 
-        # --- Псевдо-pop-up под карточкой ---
+        # Pop-up
         if st.session_state[f"{name}_show_popup"]:
             st.markdown(
                 f"""
@@ -120,7 +132,7 @@ for i, name in enumerate(achievements.keys()):
         cols = st.columns(cols_per_row)
         st.markdown(f"<div style='margin-bottom:{row_margin}px;'></div>", unsafe_allow_html=True)
 
-# --- Сохранение прогресса ---
+# --- Сохраняем прогресс ---
 for name in achievements.keys():
     achievements[name]["done"] = st.session_state[name]
 
