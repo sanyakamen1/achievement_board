@@ -61,7 +61,7 @@ for i, name in enumerate(achievements.keys()):
         img_path = GOLD_IMG if st.session_state[name] else GRAY_IMG
         img_base64 = img_to_base64(img_path)
 
-        # --- Горизонтальная плашка с большей картинкой ---
+        # --- Горизонтальная плашка с картинкой и названием ---
         st.markdown(
             f"""
             <div style="
@@ -71,7 +71,7 @@ for i, name in enumerate(achievements.keys()):
                 border-radius:12px;
                 padding:15px 20px;
                 width:100%;
-                height:120px;  /* толще */
+                height:120px;
                 margin-bottom:5px;
             ">
                 <img src="data:image/png;base64,{img_base64}" style="width:90px; height:90px; margin-right:20px;" />
@@ -83,24 +83,13 @@ for i, name in enumerate(achievements.keys()):
             unsafe_allow_html=True
         )
 
-        # --- Горизонтальный контейнер для чекбокса и кнопки Details с justify-content: space-between ---
-        st.markdown(
-            f"""
-            <div style="
-                display:flex;
-                justify-content:space-between;
-                align-items:center;
-                margin-bottom:10px;
-            ">
-            """,
-            unsafe_allow_html=True
-        )
-        # Чекбокс слева
-        st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
-        # Кнопка Details справа
-        if st.button("Details", key=f"details_{name}"):
-            st.session_state[f"{name}_show_popup"] = True
-        st.markdown("</div>", unsafe_allow_html=True)
+        # --- Горизонтальная строка для чекбокса и кнопки Details ---
+        cols_inner = st.columns([1,1])
+        with cols_inner[0]:
+            st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
+        with cols_inner[1]:
+            if st.button("Details", key=f"details_{name}"):
+                st.session_state[f"{name}_show_popup"] = True
 
         # --- Псевдо-попап под карточкой ---
         if st.session_state[f"{name}_show_popup"]:
