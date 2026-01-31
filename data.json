@@ -1,7 +1,22 @@
 {
-  "Run 10 km": false,
-  "Read 5 books": false,
-  "Meditate 7 days": false,
-  "Write 1000 words": false,
-  "Cook a new recipe": false
+  "Run 10 km": {
+    "done": false,
+    "description": "Пробежал 10 километров за один раз."
+  },
+  "Read 5 books": {
+    "done": false,
+    "description": "Прочитал 5 книг."
+  },
+  "Meditate 7 days": {
+    "done": false,
+    "description": "Медитировал 7 дней подряд."
+  },
+  "Write 1000 words": {
+    "done": false,
+    "description": "Написал 1000 слов."
+  },
+  "Cook a new recipe": {
+    "done": false,
+    "description": "Насрал 100 раз"
+  }
 }

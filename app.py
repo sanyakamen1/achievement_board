@@ -11,30 +11,27 @@ GRAY_IMG = BASE_DIR / "images/gray.png"
 GOLD_IMG = BASE_DIR / "images/gold.png"
 DATA_FILE = BASE_DIR / "data.json"
 
-# --- Описания достижений ---
-descriptions = {
-    "Run 10 km": "Пробежал 10 километров за один раз.",
-    "Read 5 books": "Прочитал 5 книг.",
-    "Meditate 7 days": "Медитировал 7 дней подряд.",
-    "Write 1000 words": "Написал 1000 слов.",
-    "Learn Python basics": "Выучил основы Python.",
-    "Cook a new recipe": "Приготовил новое блюдо.",
-    "Draw a sketch": "Нарисовал набросок.",
-}
-
-# --- Загрузка прогресса ---
+# --- Загрузка данных из JSON ---
 if DATA_FILE.exists():
-    with open(DATA_FILE, "r") as f:
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
         achievements = json.load(f)
 else:
-    achievements = {k: False for k in descriptions.keys()}
+    achievements = {
+        "Run 10 km": {"done": False, "description": "Пробежал 10 километров за один раз."},
+        "Read 5 books": {"done": False, "description": "Прочитал 5 книг."},
+        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд."},
+        "Write 1000 words": {"done": False, "description": "Написал 1000 слов."},
+        "Learn Python basics": {"done": False, "description": "Выучил основы Python."},
+        "Cook a new recipe": {"done": False, "description": "Приготовил новое блюдо."},
+        "Draw a sketch": {"done": False, "description": "Нарисовал набросок."}
+    }
 
 # --- Инициализация session_state ---
-for name in achievements.keys():
+for name, info in achievements.items():
     if name not in st.session_state:
-        st.session_state[name] = achievements[name]
+        st.session_state[name] = info["done"]
     if f"{name}_toast_shown" not in st.session_state:
-        st.session_state[f"{name}_toast_shown"] = achievements[name]
+        st.session_state[f"{name}_toast_shown"] = info["done"]
     if f"{name}_show_popup" not in st.session_state:
         st.session_state[f"{name}_show_popup"] = False
 
@@ -61,7 +58,7 @@ for i, name in enumerate(achievements.keys()):
         img_path = GOLD_IMG if st.session_state[name] else GRAY_IMG
         img_base64 = img_to_base64(img_path)
 
-        # --- Горизонтальная плашка с картинкой и названием ---
+        # --- Плашка с картинкой и названием ---
         st.markdown(
             f"""
             <div style="
@@ -83,7 +80,7 @@ for i, name in enumerate(achievements.keys()):
             unsafe_allow_html=True
         )
 
-        # --- Горизонтальная строка для чекбокса и кнопки Details ---
+        # --- Горизонтальная строка под плашкой: чекбокс и кнопка Details ---
         cols_inner = st.columns([1,1])
         with cols_inner[0]:
             st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
@@ -91,7 +88,7 @@ for i, name in enumerate(achievements.keys()):
             if st.button("Details", key=f"details_{name}"):
                 st.session_state[f"{name}_show_popup"] = True
 
-        # --- Псевдо-попап под карточкой ---
+        # --- Псевдо-pop-up под карточкой ---
         if st.session_state[f"{name}_show_popup"]:
             st.markdown(
                 f"""
@@ -104,7 +101,7 @@ for i, name in enumerate(achievements.keys()):
                 ">
                     <img src="data:image/png;base64,{img_base64}" style="width:200px; height:200px; margin-bottom:15px;" />
                     <h2 style="color:white;">{name}</h2>
-                    <p style="color:white;">{descriptions[name]}</p>
+                    <p style="color:white;">{achievements[name]["description"]}</p>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -120,7 +117,7 @@ for i, name in enumerate(achievements.keys()):
 
 # --- Сохранение прогресса ---
 for name in achievements.keys():
-    achievements[name] = st.session_state[name]
+    achievements[name]["done"] = st.session_state[name]
 
-with open(DATA_FILE, "w") as f:
-    json.dump(achievements, f, indent=2)
+with open(DATA_FILE, "w", encoding="utf-8") as f:
+    json.dump(achievements, f, ensure_ascii=False, indent=2)
