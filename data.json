@@ -1,5 +1,7 @@
 {
-  "Run 10 km": false,
+  "Run 10 km": true,
   "Read 5 books": false,
-  "Meditate 7 days": false
+  "Meditate 7 days": false,
+  "Write 1000 words": false,
+  "Cook a new recipe": false
 }
