@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import base64
 
+# --- Настройка страницы ---
 st.set_page_config(page_title="Achievements", layout="wide")
 st.title("🏆 Achievement Board")
 
@@ -17,9 +18,9 @@ if DATA_FILE.exists():
         achievements = json.load(f)
 else:
     achievements = {
-        "Run 10 km": {"done": False, "description": "Пробежал 10 километров за один раз."},
-        "Read 5 books": {"done": False, "description": "Прочитал 5 книг."},
-        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд."}
+        "Run 10 km": {"done": False, "description": "Пробежал 10 километров за один раз.", "img_gray": None, "img_gold": None},
+        "Read 5 books": {"done": False, "description": "Прочитал 5 книг.", "img_gray": None, "img_gold": None},
+        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд.", "img_gray": None, "img_gold": None}
     }
 
 # --- Инициализация session_state ---
@@ -49,18 +50,32 @@ def show_popup(name):
 def close_popup(name):
     st.session_state[f"{name}_show_popup"] = False
 
-# --- Создание новой ачивки ---
-with st.sidebar:  # можно вместо sidebar разместить в правом верхнем углу через st.columns
+# --- Создание новой ачивки в боковой панели ---
+with st.sidebar:
     st.header("➕ Add New Achievement")
     new_name = st.text_input("Title")
     new_desc = st.text_area("Description")
-    if st.button("Create"):
+    gray_file = st.file_uploader("Upload gray (not done) image", type=["png","jpg","jpeg"])
+    gold_file = st.file_uploader("Upload gold (done) image", type=["png","jpg","jpeg"])
+    if st.button("Create Achievement"):
         if new_name.strip() != "" and new_name not in achievements:
-            achievements[new_name] = {"done": False, "description": new_desc}
+            # Конвертируем картинки в Base64
+            img_gray_b64 = base64.b64encode(gray_file.read()).decode() if gray_file else None
+            img_gold_b64 = base64.b64encode(gold_file.read()).decode() if gold_file else None
+
+            achievements[new_name] = {
+                "done": False,
+                "description": new_desc,
+                "img_gray": img_gray_b64,
+                "img_gold": img_gold_b64
+            }
+
+            # Инициализация session_state
             st.session_state[new_name] = False
             st.session_state[f"{new_name}_toast_shown"] = False
             st.session_state[f"{new_name}_show_popup"] = False
-            # сохраняем сразу в JSON
+
+            # Сохраняем JSON
             with open(DATA_FILE, "w", encoding="utf-8") as f:
                 json.dump(achievements, f, ensure_ascii=False, indent=2)
             st.success(f"Achievement '{new_name}' added!")
@@ -74,8 +89,11 @@ row_margin = 40
 for i, name in enumerate(achievements.keys()):
     col = cols[col_index]
     with col:
-        img_path = GOLD_IMG if st.session_state[name] else GRAY_IMG
-        img_base64 = img_to_base64(img_path)
+        # Выбираем картинку: Base64 из JSON или дефолтные
+        if achievements[name]["img_gray"] and achievements[name]["img_gold"]:
+            img_base64 = achievements[name]["img_gold"] if st.session_state[name] else achievements[name]["img_gray"]
+        else:
+            img_base64 = img_to_base64(GOLD_IMG if st.session_state[name] else GRAY_IMG)
 
         # Плашка
         st.markdown(
