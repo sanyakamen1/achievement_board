@@ -49,10 +49,11 @@ def on_checkbox_change(name):
         st.toast(f"🏆 Achievement unlocked: {name}")
         st.session_state[f"{name}_toast_shown"] = True
 
-# --- Сетка 3xN ---
+# --- Сетка 3xN с отступами между рядами ---
 cols_per_row = 3
 col_index = 0
 cols = st.columns(cols_per_row)
+row_margin = 40  # px отступ между рядами
 
 for i, name in enumerate(achievements.keys()):
     col = cols[col_index]
@@ -60,33 +61,46 @@ for i, name in enumerate(achievements.keys()):
         img_path = GOLD_IMG if st.session_state[name] else GRAY_IMG
         img_base64 = img_to_base64(img_path)
 
-        # --- Плашка с картинкой и текстом ---
+        # --- Горизонтальная плашка с большей картинкой ---
         st.markdown(
             f"""
             <div style="
                 display:flex;
                 align-items:center;
                 background-color:#2C2C2C;
-                border-radius:10px;
-                padding:10px;
-                height:80px;
+                border-radius:12px;
+                padding:15px 20px;
+                width:100%;
+                height:120px;  /* толще */
                 margin-bottom:5px;
             ">
-                <img src="data:image/png;base64,{img_base64}" style="width:60px; height:60px; margin-right:15px;" />
-                <span style='color:white; font-size:20px; font-weight:bold;'>{name}</span>
+                <img src="data:image/png;base64,{img_base64}" style="width:90px; height:90px; margin-right:20px;" />
+                <div style='flex:1; display:flex; justify-content:center; align-items:center;'>
+                    <span style='color:white; font-size:22px; font-weight:bold;'>{name}</span>
+                </div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-        # --- Горизонтальный контейнер для чекбокса и кнопки Details ---
-        container = st.container()
-        cols_inner = container.columns([1, 1])  # 2 колонки одинаковой ширины
-        with cols_inner[0]:
-            st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
-        with cols_inner[1]:
-            if st.button("Details", key=f"details_{name}"):
-                st.session_state[f"{name}_show_popup"] = True
+        # --- Горизонтальный контейнер для чекбокса и кнопки Details с justify-content: space-between ---
+        st.markdown(
+            f"""
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:10px;
+            ">
+            """,
+            unsafe_allow_html=True
+        )
+        # Чекбокс слева
+        st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
+        # Кнопка Details справа
+        if st.button("Details", key=f"details_{name}"):
+            st.session_state[f"{name}_show_popup"] = True
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # --- Псевдо-попап под карточкой ---
         if st.session_state[f"{name}_show_popup"]:
@@ -113,6 +127,7 @@ for i, name in enumerate(achievements.keys()):
     if col_index >= cols_per_row:
         col_index = 0
         cols = st.columns(cols_per_row)
+        st.markdown(f"<div style='margin-bottom:{row_margin}px;'></div>", unsafe_allow_html=True)
 
 # --- Сохранение прогресса ---
 for name in achievements.keys():
