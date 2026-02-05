@@ -275,8 +275,8 @@ with st.sidebar:
             if save_data():
                 st.success(f"Achievement '{new_name}' added!")
 
-# --- Сетка 4xN с отступами между рядами ---
-cols_per_row = 4
+# --- Сетка 5xN с отступами между рядами ---
+cols_per_row = 5
 col_index = 0
 cols = st.columns(cols_per_row)
 row_margin = 40
