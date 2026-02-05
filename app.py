@@ -36,7 +36,12 @@ def load_data():
     if DATA_FILE.exists():
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                # Миграция данных: добавляем поле category для достижений, у которых его нет
+                for name, achievement in data.items():
+                    if "category" not in achievement:
+                        achievement["category"] = "General"  # Категория по умолчанию для старых достижений
+                return data
         except json.JSONDecodeError as e:
             logger.error(f"Ошибка чтения JSON файла: {e}")
             st.error("Файл данных поврежден. Используем стандартные достижения.")
@@ -46,9 +51,9 @@ def load_data():
     
     # Возвращаем стандартные достижения при ошибках
     return {
-        "Run 10 km": {"done": False, "description": "Пробежал 10 километров за один раз.", "img_gray": None, "img_gold": None},
-        "Read 5 books": {"done": False, "description": "Прочитал 5 книг.", "img_gray": None, "img_gold": None},
-        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд.", "img_gray": None, "img_gold": None}
+        "Run 10 km": {"done": False, "description": "Пробежал 10 километров за один раз.", "img_gray": None, "img_gold": None, "category": "Fitness"},
+        "Read 5 books": {"done": False, "description": "Прочитал 5 книг.", "img_gray": None, "img_gold": None, "category": "Learning"},
+        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд.", "img_gray": None, "img_gold": None, "category": "Health"}
     }
 
 achievements = load_data()
@@ -99,12 +104,16 @@ def close_delete_popup(name):
     st.session_state[f"{name}_show_delete"] = False
 
 # --- Функция для редактирования достижения ---
-def edit_achievement(name, new_name, new_desc, new_gray_file, new_gold_file):
+def edit_achievement(name, new_name, new_desc, new_category, new_gray_file, new_gold_file):
     """Редактирует достижение с валидацией"""
     # Проверка на пустое имя
     if not new_name.strip():
         st.error("Название достижения не может быть пустым.")
         return False
+    
+    # Проверка на пустую категорию
+    if not new_category.strip():
+        new_category = "General"  # Категория по умолчанию если пользователь не ввел категорию
     
     # Проверка на изменение имени и существование нового имени
     if new_name != name and new_name in achievements:
@@ -122,6 +131,7 @@ def edit_achievement(name, new_name, new_desc, new_gray_file, new_gold_file):
     achievements[new_name] = {
         "done": achievements[old_name]["done"],
         "description": new_desc,
+        "category": new_category,
         "img_gray": img_gray_b64 if img_gray_b64 else achievements[old_name]["img_gray"],
         "img_gold": img_gold_b64 if img_gold_b64 else achievements[old_name]["img_gold"]
     }
@@ -217,6 +227,7 @@ with st.sidebar:
     st.header("➕ Add New Achievement")
     new_name = st.text_input("Title")
     new_desc = st.text_area("Description")
+    new_category = st.text_input("Category", value="General")
     gray_file = st.file_uploader("Upload gray (not done) image", type=["png","jpg","jpeg"])
     gold_file = st.file_uploader("Upload gold (done) image", type=["png","jpg","jpeg"])
     
@@ -235,6 +246,7 @@ with st.sidebar:
             achievements[new_name] = {
                 "done": False,
                 "description": new_desc,
+                "category": new_category if new_category.strip() else "General",
                 "img_gray": img_gray_b64,
                 "img_gold": img_gold_b64
             }
@@ -284,8 +296,9 @@ for i, name in enumerate(list(achievements.keys())):
                     margin-bottom:5px;
                 ">
                     <img src="data:image/png;base64,{img_base64}" style="width:90px; height:90px; margin-right:20px;" />
-                    <div style='flex:1; display:flex; justify-content:center; align-items:center;'>
+                    <div style='flex:1; display:flex; flex-direction:column; justify-content:center;'>
                         <span style='color:white; font-size:22px; font-weight:bold;'>{name}</span>
+                        <span style='color:#cccccc; font-size:14px;'>Category: {achievements[name]['category']}</span>
                     </div>
                 </div>
                 """,
@@ -329,13 +342,14 @@ for i, name in enumerate(list(achievements.keys())):
                     # Форма редактирования
                     edit_name = st.text_input("Title", value=name, key=f"edit_name_{name}")
                     edit_desc = st.text_area("Description", value=achievements[name]["description"], key=f"edit_desc_{name}")
+                    edit_category = st.text_input("Category", value=achievements[name]["category"], key=f"edit_category_{name}")
                     edit_gray_file = st.file_uploader("Upload new gray (not done) image", type=["png","jpg","jpeg"], key=f"edit_gray_{name}")
                     edit_gold_file = st.file_uploader("Upload new gold (done) image", type=["png","jpg","jpeg"], key=f"edit_gold_{name}")
                     
                     col1, col2 = st.columns(2)
                     with col1:
                         if st.button("Save Changes", key=f"save_edit_{name}"):
-                            if edit_achievement(name, edit_name, edit_desc, edit_gray_file, edit_gold_file):
+                            if edit_achievement(name, edit_name, edit_desc, edit_category, edit_gray_file, edit_gold_file):
                                 close_edit_popup(name)
                     with col2:
                         st.button("Cancel", key=f"cancel_edit_{name}", on_click=close_edit_popup, args=(name,))
