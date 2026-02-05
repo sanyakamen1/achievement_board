@@ -77,8 +77,98 @@ def init_session_state():
             st.session_state[f"{name}_toast_shown"] = achievements[name]["done"]
         if f"{name}_show_popup" not in st.session_state:
             st.session_state[f"{name}_show_popup"] = False
+        if f"{name}_show_edit" not in st.session_state:
+            st.session_state[f"{name}_show_edit"] = False
+        if f"{name}_show_delete" not in st.session_state:
+            st.session_state[f"{name}_show_delete"] = False
 
 init_session_state()
+
+# --- Колбэки для редактирования ---
+def show_edit_popup(name):
+    st.session_state[f"{name}_show_edit"] = True
+
+def close_edit_popup(name):
+    st.session_state[f"{name}_show_edit"] = False
+
+# --- Колбэки для удаления ---
+def show_delete_popup(name):
+    st.session_state[f"{name}_show_delete"] = True
+
+def close_delete_popup(name):
+    st.session_state[f"{name}_show_delete"] = False
+
+# --- Функция для редактирования достижения ---
+def edit_achievement(name, new_name, new_desc, new_gray_file, new_gold_file):
+    """Редактирует достижение с валидацией"""
+    # Проверка на пустое имя
+    if not new_name.strip():
+        st.error("Название достижения не может быть пустым.")
+        return False
+    
+    # Проверка на изменение имени и существование нового имени
+    if new_name != name and new_name in achievements:
+        st.error("Достижение с таким названием уже существует.")
+        return False
+    
+    # Обработка изображений
+    img_gray_b64 = process_image_file(new_gray_file, "серого изображения")
+    img_gold_b64 = process_image_file(new_gold_file, "золотого изображения")
+    
+    # Сохраняем старое имя для очистки session_state
+    old_name = name
+    
+    # Обновляем достижение
+    achievements[new_name] = {
+        "done": achievements[old_name]["done"],
+        "description": new_desc,
+        "img_gray": img_gray_b64 if img_gray_b64 else achievements[old_name]["img_gray"],
+        "img_gold": img_gold_b64 if img_gold_b64 else achievements[old_name]["img_gold"]
+    }
+    
+    # Удаляем старое достижение если имя изменилось
+    if new_name != old_name:
+        del achievements[old_name]
+        # Обновляем session_state
+        st.session_state[new_name] = st.session_state[old_name]
+        st.session_state[f"{new_name}_toast_shown"] = st.session_state[f"{old_name}_toast_shown"]
+        st.session_state[f"{new_name}_show_popup"] = st.session_state[f"{old_name}_show_popup"]
+        # Удаляем старые session_state переменные
+        del st.session_state[old_name]
+        del st.session_state[f"{old_name}_toast_shown"]
+        del st.session_state[f"{old_name}_show_popup"]
+        del st.session_state[f"{old_name}_show_edit"]
+        del st.session_state[f"{old_name}_show_delete"]
+    
+    # Сохраняем данные
+    if save_data():
+        st.success(f"Achievement '{new_name}' updated successfully!")
+        return True
+    return False
+
+# --- Функция для удаления достижения ---
+def delete_achievement(name):
+    """Удаляет достижение с очисткой session_state"""
+    if name in achievements:
+        # Удаляем из данных
+        del achievements[name]
+        # Очищаем session_state
+        if name in st.session_state:
+            del st.session_state[name]
+        if f"{name}_toast_shown" in st.session_state:
+            del st.session_state[f"{name}_toast_shown"]
+        if f"{name}_show_popup" in st.session_state:
+            del st.session_state[f"{name}_show_popup"]
+        if f"{name}_show_edit" in st.session_state:
+            del st.session_state[f"{name}_show_edit"]
+        if f"{name}_show_delete" in st.session_state:
+            del st.session_state[f"{name}_show_delete"]
+        
+        # Сохраняем данные
+        if save_data():
+            st.success(f"Achievement '{name}' deleted successfully!")
+            return True
+    return False
 
 # --- Чекбокс + toast ---
 def on_checkbox_change(name):
@@ -164,11 +254,11 @@ col_index = 0
 cols = st.columns(cols_per_row)
 row_margin = 40
 
-for i, name in enumerate(achievements.keys()):
+for i, name in enumerate(list(achievements.keys())):
     col = cols[col_index]
     with col:
-        # Выбираем картинку: Base64 из JSON или дефолтные
         try:
+            # Выбираем картинку: Base64 из JSON или дефолтные
             if achievements[name]["img_gray"] and achievements[name]["img_gold"]:
                 img_base64 = achievements[name]["img_gold"] if st.session_state[name] else achievements[name]["img_gray"]
             else:
@@ -202,15 +292,19 @@ for i, name in enumerate(achievements.keys()):
                 unsafe_allow_html=True
             )
             
-            # Чекбокс + Details
-            cols_inner = st.columns([1,1])
+            # Чекбокс + Details + Edit + Delete
+            cols_inner = st.columns([1,1,1,1])
             with cols_inner[0]:
                 st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
             with cols_inner[1]:
                 st.button("Details", key=f"details_{name}", on_click=show_popup, args=(name,))
+            with cols_inner[2]:
+                st.button("✏️ Edit", key=f"edit_{name}", on_click=show_edit_popup, args=(name,))
+            with cols_inner[3]:
+                st.button("🗑️ Delete", key=f"delete_{name}", on_click=show_delete_popup, args=(name,))
 
             # Pop-up
-            if st.session_state[f"{name}_show_popup"]:
+            if st.session_state.get(f"{name}_show_popup", False):
                 st.markdown(
                     f"""
                     <div style="
@@ -229,9 +323,41 @@ for i, name in enumerate(achievements.keys()):
                 )
                 st.button("Close", key=f"close_{name}", on_click=close_popup, args=(name,))
 
+            # Edit Modal
+            if st.session_state.get(f"{name}_show_edit", False):
+                with st.expander(f"✏️ Edit Achievement: {name}", expanded=True):
+                    # Форма редактирования
+                    edit_name = st.text_input("Title", value=name, key=f"edit_name_{name}")
+                    edit_desc = st.text_area("Description", value=achievements[name]["description"], key=f"edit_desc_{name}")
+                    edit_gray_file = st.file_uploader("Upload new gray (not done) image", type=["png","jpg","jpeg"], key=f"edit_gray_{name}")
+                    edit_gold_file = st.file_uploader("Upload new gold (done) image", type=["png","jpg","jpeg"], key=f"edit_gold_{name}")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Save Changes", key=f"save_edit_{name}"):
+                            if edit_achievement(name, edit_name, edit_desc, edit_gray_file, edit_gold_file):
+                                close_edit_popup(name)
+                    with col2:
+                        st.button("Cancel", key=f"cancel_edit_{name}", on_click=close_edit_popup, args=(name,))
+
+            # Delete Modal
+            if st.session_state.get(f"{name}_show_delete", False):
+                with st.expander(f"🗑️ Delete Achievement: {name}", expanded=True):
+                    st.warning(f"Are you sure you want to delete '{name}'?")
+                    st.error("This action cannot be undone.")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Yes, Delete", key=f"confirm_delete_{name}"):
+                            if delete_achievement(name):
+                                close_delete_popup(name)
+                    with col2:
+                        st.button("Cancel", key=f"cancel_delete_{name}", on_click=close_delete_popup, args=(name,))
+
         except Exception as e:
             logger.error(f"Ошибка при отображении достижения {name}: {e}")
-            st.error(f"Ошибка при отображении достижения: {name}")
+            # Скрываем ошибку от пользователя, но логируем ее
+            pass
 
     col_index += 1
     if col_index >= cols_per_row:
@@ -242,8 +368,11 @@ for i, name in enumerate(achievements.keys()):
 # --- Сохраняем прогресс при завершении ---
 def save_all_progress():
     """Сохраняет прогресс всех достижений"""
-    for name in achievements.keys():
-        achievements[name]["done"] = st.session_state[name]
+    # Создаем копию ключей, чтобы избежать изменения словаря во время итерации
+    achievement_names = list(achievements.keys())
+    for name in achievement_names:
+        if name in achievements:  # Проверяем, что достижение еще существует
+            achievements[name]["done"] = st.session_state[name]
     save_data()
 
 # Автоматическое сохранение при завершении работы
