@@ -277,153 +277,170 @@ with st.sidebar:
 
 # --- Сетка 5xN с отступами между рядами ---
 cols_per_row = 5
-col_index = 0
-cols = st.columns(cols_per_row)
-row_margin = 10  # Уменьшено до маленького значения
+row_margin = 10  # ????????? ?? ?????????? ????????
 
-# Добавляем небольшой отступ перед первым рядом, чтобы все ряды были равноудалены
-st.markdown(f"<div style='margin-bottom:{row_margin}px;'></div>", unsafe_allow_html=True)
+# --- ??????????? ?????????? ?? ?????????? ---
 
-for i, name in enumerate(list(achievements.keys())):
-    col = cols[col_index]
-    with col:
-        try:
-            # Выбираем картинку: Base64 из JSON или дефолтные
-            if achievements[name]["img_gray"] and achievements[name]["img_gold"]:
-                img_base64 = achievements[name]["img_gold"] if st.session_state[name] else achievements[name]["img_gray"]
-            else:
-                # Используем дефолтные изображения
-                default_img_path = GOLD_IMG if st.session_state[name] else GRAY_IMG
-                img_base64 = img_to_base64(default_img_path)
-                
-                # Если дефолтное изображение недоступно, используем заглушку
-                if not img_base64:
-                    img_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="  # Пустое изображение
-            
-            # Плашка
-            # Подготовим текст для даты получения
+def render_achievement(name):
+    try:
+        # ???????? ????????: Base64 ?? JSON ??? ?????????
+        if achievements[name]["img_gray"] and achievements[name]["img_gold"]:
+            img_base64 = achievements[name]["img_gold"] if st.session_state[name] else achievements[name]["img_gray"]
+        else:
+            # ?????????? ????????? ???????????
+            default_img_path = GOLD_IMG if st.session_state[name] else GRAY_IMG
+            img_base64 = img_to_base64(default_img_path)
+
+            # ???? ????????? ??????????? ??????????, ?????????? ????????
+            if not img_base64:
+                img_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="  # ?????? ???????????
+
+        # ??????: ????? ??? ???? ?????????
+        date_text = ""
+        if achievements[name]["done"] and achievements[name].get("date_received"):
+            date_text = f'<span style="color:#aaaaaa; font-size:12px;">Date received: {achievements[name]["date_received"]}</span>'
+        elif achievements[name]["done"] and not achievements[name].get("date_received"):
+            date_text = '<span style="color:#aaaaaa; font-size:12px;">Date received: Not set</span>'
+        else:
             date_text = ""
-            if achievements[name]["done"] and achievements[name].get("date_received"):
-                date_text = f'<span style="color:#aaaaaa; font-size:12px;">Date received: {achievements[name]["date_received"]}</span>'
-            elif achievements[name]["done"] and not achievements[name].get("date_received"):
-                date_text = '<span style="color:#aaaaaa; font-size:12px;">Date received: Not set</span>'
-            else:
-                date_text = ""  # Не отображаем ничего, если достижение не выполнено
-            
-            # Комбинируем категорию и дату в одном элементе
-            info_text = f'<span style="color:#cccccc; font-size:14px;">Category: {achievements[name]["category"]}</span>'
-            if date_text:
-                info_text += f'<br>{date_text}'
-            
+
+        # ??????????? ????????? ? ???? ? ????? ????????
+        info_text = f'<span style="color:#cccccc; font-size:14px;">Category: {achievements[name]["category"]}</span>'
+        if date_text:
+            info_text += f'<br>{date_text}'
+
+        st.markdown(
+            f"""
+            <div style="
+                display:flex;
+                align-items:center;
+                background-color:#2C2C2C;
+                border-radius:12px;
+                padding:15px 20px;
+                width:100%;
+                height:120px;
+                margin-bottom:5px;
+            ">
+                <img src="data:image/png;base64,{img_base64}" style="width:90px; height:90px; margin-right:20px;" />
+                <div style='flex:1; display:flex; flex-direction:column; justify-content:center;'>
+                    <span style='color:white; font-size:22px; font-weight:bold;'>{name}</span>
+                    {info_text}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # ??????? + Details + Edit + Delete
+        cols_inner = st.columns([1,1,1,1])
+        with cols_inner[0]:
+            st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
+        with cols_inner[1]:
+            st.button("Details", key=f"details_{name}", on_click=show_popup, args=(name,))
+        with cols_inner[2]:
+            st.button("Edit", key=f"edit_{name}", on_click=show_edit_popup, args=(name,))
+        with cols_inner[3]:
+            st.button("Delete", key=f"delete_{name}", on_click=show_delete_popup, args=(name,))
+
+        # Pop-up
+        if st.session_state.get(f"{name}_show_popup", False):
             st.markdown(
                 f"""
                 <div style="
-                    display:flex;
-                    align-items:center;
-                    background-color:#2C2C2C;
-                    border-radius:12px;
-                    padding:15px 20px;
-                    width:100%;
-                    height:120px;
-                    margin-bottom:5px;
+                    background-color:#3C3C3C;
+                    padding:20px;
+                    border-radius:15px;
+                    margin-top:10px;
+                    text-align:center;
                 ">
-                    <img src="data:image/png;base64,{img_base64}" style="width:90px; height:90px; margin-right:20px;" />
-                    <div style='flex:1; display:flex; flex-direction:column; justify-content:center;'>
-                        <span style='color:white; font-size:22px; font-weight:bold;'>{name}</span>
-                        {info_text}
-                    </div>
+                    <img src="data:image/png;base64,{img_base64}" style="width:200px; height:200px; margin-bottom:15px;" />
+                    <h2 style="color:white;">{name}</h2>
+                    <p style="color:white;">{achievements[name]["description"]}</p>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-            
-            # Чекбокс + Details + Edit + Delete
-            cols_inner = st.columns([1,1,1,1])
-            with cols_inner[0]:
-                st.checkbox(label="Done", key=name, on_change=on_checkbox_change, args=(name,))
-            with cols_inner[1]:
-                st.button("Details", key=f"details_{name}", on_click=show_popup, args=(name,))
-            with cols_inner[2]:
-                st.button("Edit", key=f"edit_{name}", on_click=show_edit_popup, args=(name,))
-            with cols_inner[3]:
-                st.button("Delete", key=f"delete_{name}", on_click=show_delete_popup, args=(name,))
+            st.button("Close", key=f"close_{name}", on_click=close_popup, args=(name,))
 
-            # Pop-up
-            if st.session_state.get(f"{name}_show_popup", False):
-                st.markdown(
-                    f"""
-                    <div style="
-                        background-color:#3C3C3C;
-                        padding:20px;
-                        border-radius:15px;
-                        margin-top:10px;
-                        text-align:center;
-                    ">
-                        <img src="data:image/png;base64,{img_base64}" style="width:200px; height:200px; margin-bottom:15px;" />
-                        <h2 style="color:white;">{name}</h2>
-                        <p style="color:white;">{achievements[name]["description"]}</p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-                st.button("Close", key=f"close_{name}", on_click=close_popup, args=(name,))
+        # Edit Modal
+        if st.session_state.get(f"{name}_show_edit", False):
+            with st.expander(f"?? Edit Achievement: {name}", expanded=True):
+                # ????? ??????????????
+                edit_name = st.text_input("Title", value=name, key=f"edit_name_{name}")
+                edit_desc = st.text_area("Description", value=achievements[name]["description"], key=f"edit_desc_{name}")
+                edit_category = st.text_input("Category", value=achievements[name]["category"], key=f"edit_category_{name}")
+                edit_gray_file = st.file_uploader("Upload new gray (not done) image", type=["png","jpg","jpeg"], key=f"edit_gray_{name}")
+                edit_gold_file = st.file_uploader("Upload new gold (done) image", type=["png","jpg","jpeg"], key=f"edit_gold_{name}")
 
-            # Edit Modal
-            if st.session_state.get(f"{name}_show_edit", False):
-                with st.expander(f"✏️ Edit Achievement: {name}", expanded=True):
-                    # Форма редактирования
-                    edit_name = st.text_input("Title", value=name, key=f"edit_name_{name}")
-                    edit_desc = st.text_area("Description", value=achievements[name]["description"], key=f"edit_desc_{name}")
-                    edit_category = st.text_input("Category", value=achievements[name]["category"], key=f"edit_category_{name}")
-                    edit_gray_file = st.file_uploader("Upload new gray (not done) image", type=["png","jpg","jpeg"], key=f"edit_gray_{name}")
-                    edit_gold_file = st.file_uploader("Upload new gold (done) image", type=["png","jpg","jpeg"], key=f"edit_gold_{name}")
-                    
-                    # Поле для редактирования даты получения
-                    current_date = achievements[name].get("date_received")
-                    if current_date:
-                        from datetime import datetime
-                        current_date_obj = datetime.strptime(current_date, "%Y-%m-%d").date()
-                    else:
-                        current_date_obj = None
-                        
-                    new_date = st.date_input("Date received", value=current_date_obj, key=f"edit_date_{name}")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("Save Changes", key=f"save_edit_{name}"):
-                            # Преобразуем дату в строку формата YYYY-MM-DD
-                            date_str = new_date.strftime("%Y-%m-%d") if new_date else None
-                            if edit_achievement(name, edit_name, edit_desc, edit_category, edit_gray_file, edit_gold_file, date_str):
-                                close_edit_popup(name)
-                    with col2:
-                        st.button("Cancel", key=f"cancel_edit_{name}", on_click=close_edit_popup, args=(name,))
+                # ???? ??? ?????????????? ???? ?????????
+                current_date = achievements[name].get("date_received")
+                if current_date:
+                    from datetime import datetime
+                    current_date_obj = datetime.strptime(current_date, "%Y-%m-%d").date()
+                else:
+                    current_date_obj = None
 
-            # Delete Modal
-            if st.session_state.get(f"{name}_show_delete", False):
-                with st.expander(f"🗑️ Delete Achievement: {name}", expanded=True):
-                    st.warning(f"Are you sure you want to delete '{name}'?")
-                    st.error("This action cannot be undone.")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("Yes, Delete", key=f"confirm_delete_{name}"):
-                            if delete_achievement(name):
-                                close_delete_popup(name)
-                    with col2:
-                        st.button("Cancel", key=f"cancel_delete_{name}", on_click=close_delete_popup, args=(name,))
+                new_date = st.date_input("Date received", value=current_date_obj, key=f"edit_date_{name}")
 
-        except Exception as e:
-            logger.error(f"Ошибка при отображении достижения {name}: {e}")
-            # Скрываем ошибку от пользователя, но логируем ее
-            pass
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Save Changes", key=f"save_edit_{name}"):
+                        # ??????????? ???? ? ?????? ??????? YYYY-MM-DD
+                        date_str = new_date.strftime("%Y-%m-%d") if new_date else None
+                        if edit_achievement(name, edit_name, edit_desc, edit_category, edit_gray_file, edit_gold_file, date_str):
+                            close_edit_popup(name)
+                with col2:
+                    st.button("Cancel", key=f"cancel_edit_{name}", on_click=close_edit_popup, args=(name,))
 
-    col_index += 1
-    if col_index >= cols_per_row:
-        col_index = 0
-        cols = st.columns(cols_per_row)
-        st.markdown(f"<div style='margin-bottom:{row_margin}px;'></div>", unsafe_allow_html=True)
+        # Delete Modal
+        if st.session_state.get(f"{name}_show_delete", False):
+            with st.expander(f"??? Delete Achievement: {name}", expanded=True):
+                st.warning(f"Are you sure you want to delete '{name}'?")
+                st.error("This action cannot be undone.")
 
-# --- Сохраняем прогресс при завершении ---
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Yes, Delete", key=f"confirm_delete_{name}"):
+                        if delete_achievement(name):
+                            close_delete_popup(name)
+                with col2:
+                    st.button("Cancel", key=f"cancel_delete_{name}", on_click=close_delete_popup, args=(name,))
+
+    except Exception as e:
+        logger.error(f"?????? ??? ??????????? ?????????? {name}: {e}")
+        # ???????? ?????? ?? ????????????, ?? ???????? ??
+        pass
+
+
+category_to_achievements = {}
+for name in achievements.keys():
+    category = achievements[name].get("category") or "General"
+    category = category.strip() if isinstance(category, str) else "General"
+    if not category:
+        category = "General"
+    category_to_achievements.setdefault(category, []).append(name)
+
+sorted_categories = sorted(category_to_achievements.keys(), key=str.lower)
+
+for category in sorted_categories:
+    st.subheader(category)
+    col_index = 0
+    cols = st.columns(cols_per_row)
+
+    # ????????? ????????? ?????? ????? ?????? ?????, ????? ??? ???? ???? ????????????
+    st.markdown(f"<div style='margin-bottom:{row_margin}px;'></div>", unsafe_allow_html=True)
+
+    for name in category_to_achievements[category]:
+        col = cols[col_index]
+        with col:
+            render_achievement(name)
+
+        col_index += 1
+        if col_index >= cols_per_row:
+            col_index = 0
+            cols = st.columns(cols_per_row)
+            st.markdown(f"<div style='margin-bottom:{row_margin}px;'></div>", unsafe_allow_html=True)
+
 def save_all_progress():
     """Сохраняет прогресс всех достижений"""
     # Создаем копию ключей, чтобы избежать изменения словаря во время итерации
