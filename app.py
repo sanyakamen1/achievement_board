@@ -279,7 +279,10 @@ with st.sidebar:
 cols_per_row = 5
 col_index = 0
 cols = st.columns(cols_per_row)
-row_margin = 40
+row_margin = 10  # Уменьшено до маленького значения
+
+# Добавляем небольшой отступ перед первым рядом, чтобы все ряды были равноудалены
+st.markdown(f"<div style='margin-bottom:{row_margin}px;'></div>", unsafe_allow_html=True)
 
 for i, name in enumerate(list(achievements.keys())):
     col = cols[col_index]
@@ -341,9 +344,9 @@ for i, name in enumerate(list(achievements.keys())):
             with cols_inner[1]:
                 st.button("Details", key=f"details_{name}", on_click=show_popup, args=(name,))
             with cols_inner[2]:
-                st.button("✏️ Edit", key=f"edit_{name}", on_click=show_edit_popup, args=(name,))
+                st.button("Edit", key=f"edit_{name}", on_click=show_edit_popup, args=(name,))
             with cols_inner[3]:
-                st.button("🗑️ Delete", key=f"delete_{name}", on_click=show_delete_popup, args=(name,))
+                st.button("Delete", key=f"delete_{name}", on_click=show_delete_popup, args=(name,))
 
             # Pop-up
             if st.session_state.get(f"{name}_show_popup", False):
