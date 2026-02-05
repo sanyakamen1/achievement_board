@@ -41,6 +41,14 @@ def load_data():
                 for name, achievement in data.items():
                     if "category" not in achievement:
                         achievement["category"] = "General"  # Категория по умолчанию для старых достижений
+                    # Миграция данных: добавляем поле date_received для достижений, у которых его нет
+                    if "date_received" not in achievement:
+                        # Если достижение выполнено, устанавливаем дату получения как текущую дату
+                        # Если не выполнено, оставляем None
+                        achievement["date_received"] = None
+                        if achievement["done"]:
+                            from datetime import datetime
+                            achievement["date_received"] = datetime.now().strftime("%Y-%m-%d")
                 return data
         except json.JSONDecodeError as e:
             logger.error(f"Ошибка чтения JSON файла: {e}")
@@ -50,10 +58,11 @@ def load_data():
             st.error("Не удалось загрузить данные. Проверьте права доступа к файлу.")
     
     # Возвращаем стандартные достижения при ошибках
+    from datetime import datetime
     return {
-        "Run 10 km": {"done": False, "description": "Пробежал 10 километров за один раз.", "img_gray": None, "img_gold": None, "category": "Fitness"},
-        "Read 5 books": {"done": False, "description": "Прочитал 5 книг.", "img_gray": None, "img_gold": None, "category": "Learning"},
-        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд.", "img_gray": None, "img_gold": None, "category": "Health"}
+        "Run 10 km": {"done": False, "description": "Пробежал 10 километров за один раз.", "img_gray": None, "img_gold": None, "category": "Fitness", "date_received": None},
+        "Read 5 books": {"done": False, "description": "Прочитал 5 книг.", "img_gray": None, "img_gold": None, "category": "Learning", "date_received": None},
+        "Meditate 7 days": {"done": False, "description": "Медитировал 7 дней подряд.", "img_gray": None, "img_gold": None, "category": "Health", "date_received": None}
     }
 
 achievements = load_data()
@@ -104,7 +113,7 @@ def close_delete_popup(name):
     st.session_state[f"{name}_show_delete"] = False
 
 # --- Функция для редактирования достижения ---
-def edit_achievement(name, new_name, new_desc, new_category, new_gray_file, new_gold_file):
+def edit_achievement(name, new_name, new_desc, new_category, new_gray_file, new_gold_file, new_date=None):
     """Редактирует достижение с валидацией"""
     # Проверка на пустое имя
     if not new_name.strip():
@@ -133,7 +142,8 @@ def edit_achievement(name, new_name, new_desc, new_category, new_gray_file, new_
         "description": new_desc,
         "category": new_category,
         "img_gray": img_gray_b64 if img_gray_b64 else achievements[old_name]["img_gray"],
-        "img_gold": img_gold_b64 if img_gold_b64 else achievements[old_name]["img_gold"]
+        "img_gold": img_gold_b64 if img_gold_b64 else achievements[old_name]["img_gold"],
+        "date_received": new_date if new_date is not None else achievements[old_name]["date_received"]
     }
     
     # Удаляем старое достижение если имя изменилось
@@ -188,6 +198,10 @@ def on_checkbox_change(name):
         st.session_state[f"{name}_toast_shown"] = True
         # Сохраняем прогресс
         achievements[name]["done"] = True
+        # Устанавливаем дату получения, если она еще не установлена
+        if not achievements[name].get("date_received"):
+            from datetime import datetime
+            achievements[name]["date_received"] = datetime.now().strftime("%Y-%m-%d")
         save_data()
 
 # --- Колбэки для pop-up ---
@@ -248,7 +262,8 @@ with st.sidebar:
                 "description": new_desc,
                 "category": new_category if new_category.strip() else "General",
                 "img_gray": img_gray_b64,
-                "img_gold": img_gold_b64
+                "img_gold": img_gold_b64,
+                "date_received": None
             }
             
             # Инициализация session_state для нового достижения
@@ -283,6 +298,20 @@ for i, name in enumerate(list(achievements.keys())):
                     img_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="  # Пустое изображение
             
             # Плашка
+            # Подготовим текст для даты получения
+            date_text = ""
+            if achievements[name]["done"] and achievements[name].get("date_received"):
+                date_text = f'<span style="color:#aaaaaa; font-size:12px;">Date received: {achievements[name]["date_received"]}</span>'
+            elif achievements[name]["done"] and not achievements[name].get("date_received"):
+                date_text = '<span style="color:#aaaaaa; font-size:12px;">Date received: Not set</span>'
+            else:
+                date_text = ""  # Не отображаем ничего, если достижение не выполнено
+            
+            # Комбинируем категорию и дату в одном элементе
+            info_text = f'<span style="color:#cccccc; font-size:14px;">Category: {achievements[name]["category"]}</span>'
+            if date_text:
+                info_text += f'<br>{date_text}'
+            
             st.markdown(
                 f"""
                 <div style="
@@ -298,7 +327,7 @@ for i, name in enumerate(list(achievements.keys())):
                     <img src="data:image/png;base64,{img_base64}" style="width:90px; height:90px; margin-right:20px;" />
                     <div style='flex:1; display:flex; flex-direction:column; justify-content:center;'>
                         <span style='color:white; font-size:22px; font-weight:bold;'>{name}</span>
-                        <span style='color:#cccccc; font-size:14px;'>Category: {achievements[name]['category']}</span>
+                        {info_text}
                     </div>
                 </div>
                 """,
@@ -346,10 +375,22 @@ for i, name in enumerate(list(achievements.keys())):
                     edit_gray_file = st.file_uploader("Upload new gray (not done) image", type=["png","jpg","jpeg"], key=f"edit_gray_{name}")
                     edit_gold_file = st.file_uploader("Upload new gold (done) image", type=["png","jpg","jpeg"], key=f"edit_gold_{name}")
                     
+                    # Поле для редактирования даты получения
+                    current_date = achievements[name].get("date_received")
+                    if current_date:
+                        from datetime import datetime
+                        current_date_obj = datetime.strptime(current_date, "%Y-%m-%d").date()
+                    else:
+                        current_date_obj = None
+                        
+                    new_date = st.date_input("Date received", value=current_date_obj, key=f"edit_date_{name}")
+                    
                     col1, col2 = st.columns(2)
                     with col1:
                         if st.button("Save Changes", key=f"save_edit_{name}"):
-                            if edit_achievement(name, edit_name, edit_desc, edit_category, edit_gray_file, edit_gold_file):
+                            # Преобразуем дату в строку формата YYYY-MM-DD
+                            date_str = new_date.strftime("%Y-%m-%d") if new_date else None
+                            if edit_achievement(name, edit_name, edit_desc, edit_category, edit_gray_file, edit_gold_file, date_str):
                                 close_edit_popup(name)
                     with col2:
                         st.button("Cancel", key=f"cancel_edit_{name}", on_click=close_edit_popup, args=(name,))
